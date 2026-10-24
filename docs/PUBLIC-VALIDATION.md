@@ -1,5 +1,13 @@
 # 验证记录与覆盖边界
 
+## v0.1.9 统一蓝天白羽毛图标
+
+- iPhone/iPad、Apple Silicon Mac Catalyst、Vision Pro 统一为 **0.1.9（10）**，使用指定蓝天白羽毛图案。补齐原图预制圆角外的天空/云层，系统负责最终裁切；图标来源、原图及方形图散列见 `app/Artwork/SOURCE.json`，可用 `swift tools/apple/prepare_icons.swift` 重新生成1024像素资源。
+- iOS/Mac 图标与 Vision 背景使用相同画面。Vision 前/中平面透明，避免重叠图案改变原构图；这次不增加羽毛独立的视差层。
+- 三个平台 Release 构建成功，`assetutil` 核对编译后的 AppIcon / AppIconVision 图标资源。包内版本、架构、许可证和数据边界检查通过，Mac ad-hoc 签名校验通过。
+- 本轮只同步 iPhone 16 Pro Max；iPad、Vision Pro 和 Mac 的实机安装按用户要求留待后续版本。iPhone 沿用原身份覆盖，首次启动前12个存档相关文件逐字节一致。用户解锁后启动成功，中文游戏资源准备成功、可选API齐全，达到 `_system_title:497`，截图确认标题画面，日志未见引擎错误、VM halted 或退出。验证后关闭自动输入与追踪，恢复普通启动；存档散列回读留在本地验证记录。
+- 本次调整为图标、版本及说明文件；Apple 引擎与运行时代码未改动，沿用 v0.1.8 的已验引擎切片。`desktop_icon` 的上游后备图片也已更新，但该模块不参与 iOS、Mac Catalyst（target_os=ios）或 visionOS 编译。本轮不重复计作新的302项引擎或24项原生测试结果。源码边界4项测试及1347文件审计通过。
+
 ## v0.1.8 首次公开发布
 
 iPhone / iPad、Mac Catalyst 和 Vision Pro 均发布 0.1.8（9）。

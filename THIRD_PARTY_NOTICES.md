@@ -45,6 +45,20 @@ The upstream project describes itself as non-commercial and intended for
 research purposes. This port follows that: it is a personal-use project for
 players who already own the game.
 
+### Blue-sky feather app icon
+
+The unified Apple icon is derived from the existing siglus_rs launcher artwork
+at `platform/ios/SiglusLauncher/SiglusLauncher/Assets.xcassets/AppIcon.appiconset/AppIcon~ios-marketing.png`
+(vendored revision above), retained under the vendored MPL-2.0 license rather
+than the shell's MIT license. The square derivative extends the sky/clouds
+into the original rounded/checkered corners using image editing. It is not
+extracted from the player's CLANNAD game data.
+
+The reference and square-image hashes are recorded in `app/Artwork/SOURCE.json`.
+`tools/apple/prepare_icons.swift` creates opaque 1024-pixel Apple renditions.
+Vision Pro uses the same composition in its background plane with transparent
+overlay planes; the system supplies the circular mask.
+
 ### Vendored third-party code inside the engine
 
 `engine/siglus_rs/vendor/libloading-0.7.4/` is the **libloading** crate

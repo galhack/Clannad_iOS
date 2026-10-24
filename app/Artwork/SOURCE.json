@@ -1,0 +1,9 @@
+{
+  "upstream": "https://github.com/xmoezzz/siglus_rs",
+  "vendored_revision": "5f358ef1",
+  "reference_path": "engine/siglus_rs/platform/ios/SiglusLauncher/SiglusLauncher/Assets.xcassets/AppIcon.appiconset/AppIcon~ios-marketing.png",
+  "reference_sha256": "75d04634a5e4336202fdf3513bde35576e5c62f4a57c9f3e49fc5ea30d5361dc",
+  "square_sha256": "1e2be6c29b43a3f16bfd1ec1ec60ea1ddd676783851eb0dcc9c2152221b6a37d",
+  "preparation": "Image editing extends the sky and clouds into the pre-rounded checkered corners. Feather, lighting and overall composition retained. Package with tools/apple/prepare_icons.swift.",
+  "license": "Upstream artwork retained under the vendored MPL-2.0 license; see THIRD_PARTY_NOTICES.md."
+}

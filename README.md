@@ -30,8 +30,8 @@
 验证目标设备：iPhone 16 Pro Max、iPad Pro 13"（M5）、Apple Vision Pro 与 Mac；
 实际验证结果、日志与截图位置见 [`docs/VALIDATION.md`](docs/VALIDATION.md)。
 
-当前公开版本为 **v0.1.8（9）**，覆盖 iPhone / iPad、Apple Silicon Mac 与 Vision Pro。
-Vision Pro 右上角仅保留菜单，iPhone / iPad 继续默认隐藏按钮。
+当前公开版本为 **v0.1.9（10）**，覆盖 iPhone / iPad、Apple Silicon Mac 与 Vision Pro。
+各平台统一使用蓝天白羽毛图标。Vision Pro 右上角仅保留菜单，iPhone / iPad 继续默认隐藏按钮。
 当前版本限制 Apple 播放器的合成频率，静止无工作时跳过整帧处理，
 并按系统热状态与低电量模式降低刷新。iPad 同存档实测与测量边界见
 [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md)。选项分支、32 pt 间距和回看修复继续保留。
