@@ -1,0 +1,12 @@
+{
+  "family": "Noto Sans SC",
+  "weight": 400,
+  "license": "SIL-OFL-1.1",
+  "source_repository": "https://github.com/notofonts/noto-cjk",
+  "source_commit": "f8d157532fbfaeda587e826d4cd5b21a49186f7c",
+  "source_path": "Sans/Variable/TTF/Subset/NotoSansSC-VF.ttf",
+  "source_sha256": "d68bafcb48a2707749396aa12bbbd833cb70401f3a9a689fd2902c7e0d295964",
+  "static_sha256": "c7763f454946833081cc90e73186615f8e1189de9c5e5a5a8752871fd79fddbc",
+  "tool": "fonttools 4.61.1",
+  "command": "fonttools varLib.instancer NotoSansSC-VF.ttf wght=400 --static --update-name-table --no-recalc-timestamp --output default.ttf"
+}

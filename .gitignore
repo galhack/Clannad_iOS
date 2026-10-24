@@ -1,0 +1,99 @@
+# ---------------------------------------------------------------------------
+# CLANNAD Apple port — repository ignore list
+#
+# The public repository contains the port only.  Game data, signing
+# credentials and internal notes stay out of git.
+# ---------------------------------------------------------------------------
+
+# --- Game data: not redistributable, the player must own the game ----------
+/data/
+/data/**
+Clannad/data/
+game/
+*.pck
+*.g00
+*.gan
+*.ovk
+*.nwa
+*.wmv
+*.omv
+*.dbs
+*.tcc
+*.cgm
+Gameexe*.dat
+Gameexe*.ini
+SiglusEngine*.exe
+steam_api.dll
+*.sav
+/converted/
+/GameData/
+
+# --- Sensitive credentials -------------------------------------------------
+# Apple signing material, provisioning, API tokens and local secrets.
+*.p12
+*.pfx
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+*.p8
+*.pem
+*.key
+*.keystore
+*.jks
+AuthKey_*.p8
+app/.team
+.team
+*.secret
+*.secrets
+*.token
+.env
+.env.*
+secrets/
+credentials/
+private/
+key.toml
+
+# --- Internal working notes (kept out of the public repo) ------------------
+agents.md
+AGENTS.md
+Claude.md
+IMPLEMENTATION_PLAN.md
+docs/internal/
+
+# --- Build products --------------------------------------------------------
+/build/
+/dist/
+/target/
+engine/siglus_rs/target/
+app/*.xcodeproj/
+app/*.xcworkspace/
+*.ipa
+*.xcarchive
+*.dSYM
+*.dmg
+*.zip
+DerivedData/
+ModuleCache/
+.tools/
+
+# --- Developer tooling / OS noise -----------------------------------------
+.DS_Store
+._*
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+*.log
+
+# Upstream game screenshots/manuals are kept local and excluded from public exports.
+/engine/siglus_rs/images/
+/engine/siglus_rs/manual/
+/engine/siglus_rs/define/shader.cfx
+/engine/siglus_rs/crates/siglus_cfx_decompiler/assets/shader.cfx
+
+/engine/siglus_rs/crates/siglus_cfx_decompiler/reference_hlsl/
+
+# Optional non-Apple precompiled shader examples; source remains available.
+*.metallib
+*.gxp

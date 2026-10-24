@@ -1,0 +1,17 @@
+[package]
+name = "siglus_probe"
+version = "0.1.0"
+edition = "2021"
+license = "MPL-2.0"
+publish = false
+
+# Standalone developer probe for the CLANNAD port. It links only the
+# asset-level crate (no wgpu/winit), so it builds in seconds and can be used
+# on a machine without the full engine host.
+[dependencies]
+anyhow = "1"
+siglus_assets = { path = "../../../engine/siglus_rs/crates/siglus_assets" }
+
+[[bin]]
+name = "siglus_probe"
+path = "src/main.rs"

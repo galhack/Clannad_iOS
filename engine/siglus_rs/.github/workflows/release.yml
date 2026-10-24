@@ -1,0 +1,804 @@
+name: Build Artifacts
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-A static_mut_refs"
+  SIGLUS_CARGO_PKG: siglus_scene_vm
+  SIGLUS_BIN: siglus_engine
+
+jobs:
+  meta:
+    name: Read Siglus version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version from crates/siglus_scene_vm/Cargo.toml
+        id: ver
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import tomllib
+          from pathlib import Path
+
+          data = tomllib.loads(
+              Path("crates/siglus_scene_vm/Cargo.toml").read_text(encoding="utf-8")
+          )
+          print(f"version={data['package']['version']}")
+          PY
+
+  linux_x86_64:
+    name: linux-x86_64 (ubuntu-22.04)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config \
+            libasound2-dev \
+            libudev-dev \
+            libx11-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcb1-dev \
+            libwayland-dev \
+            libxkbcommon-dev \
+            libvulkan-dev
+
+      - name: Build (release)
+        run: |
+          cargo build --release -p "${SIGLUS_CARGO_PKG}" --bin "${SIGLUS_BIN}" --verbose
+
+      - name: Package artifact
+        run: |
+          mkdir -p dist/linux
+          BIN="target/release/${SIGLUS_BIN}"
+          test -f "$BIN"
+          tar -C "target/release" -czf "dist/linux/siglus-linux-x86_64.tar.gz" "${SIGLUS_BIN}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: siglus-linux-x86_64
+          path: dist/linux/siglus-linux-x86_64.tar.gz
+          if-no-files-found: error
+
+  linux_aarch64:
+    name: linux-aarch64 (ubuntu-22.04-arm)
+    runs-on: ubuntu-22.04-arm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config \
+            libasound2-dev \
+            libudev-dev \
+            libx11-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcb1-dev \
+            libwayland-dev \
+            libxkbcommon-dev \
+            libvulkan-dev
+
+      - name: Build (release)
+        run: |
+          cargo build --release -p "${SIGLUS_CARGO_PKG}" --bin "${SIGLUS_BIN}" --verbose
+
+      - name: Package artifact
+        run: |
+          mkdir -p dist/linux
+          BIN="target/release/${SIGLUS_BIN}"
+          test -f "$BIN"
+          tar -C "target/release" -czf "dist/linux/siglus-linux-aarch64.tar.gz" "${SIGLUS_BIN}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: siglus-linux-aarch64
+          path: dist/linux/siglus-linux-aarch64.tar.gz
+          if-no-files-found: error
+
+  freebsd:
+    name: freebsd-x86_64
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build FreeBSD artifact
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "14.4"
+          arch: x86_64
+          usesh: true
+          sync: rsync
+          copyback: true
+          envs: 'CARGO_TERM_COLOR RUSTFLAGS SIGLUS_CARGO_PKG SIGLUS_BIN'
+          prepare: |
+            set -e
+            pkg update
+            pkg install -y \
+              bash \
+              git \
+              curl \
+              rust \
+              pkgconf \
+              cmake \
+              ninja \
+              gmake \
+              llvm19 \
+              alsa-lib \
+              libX11 \
+              libXcursor \
+              libXi \
+              libXrandr \
+              libXinerama \
+              libxcb \
+              wayland \
+              libxkbcommon \
+              vulkan-loader
+          run: |
+            set -e
+            freebsd-version
+            uname -a
+            rustc -Vv
+            cargo -V
+            cc --version
+            clang --version || true
+            pkgconf --version
+
+            cargo build --release -p "${SIGLUS_CARGO_PKG}" --bin "${SIGLUS_BIN}" --verbose
+
+            mkdir -p dist/freebsd
+            BIN="target/release/${SIGLUS_BIN}"
+            test -f "${BIN}"
+            tar -C "target/release" -czf "dist/freebsd/siglus-freebsd-x86_64.tar.gz" "${SIGLUS_BIN}"
+
+      - name: Upload FreeBSD artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: siglus-freebsd-x86_64
+          path: dist/freebsd/siglus-freebsd-x86_64.tar.gz
+          if-no-files-found: error
+
+  wasm:
+    name: wasm
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build wasm package
+        run: |
+          set -euo pipefail
+          chmod +x platform/scripts/build_wasm.sh
+          ./platform/scripts/build_wasm.sh
+
+      - name: Verify wasm output
+        run: |
+          test -f dist/wasm/siglus_rs-wasm.zip
+
+      - name: Upload wasm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: siglus-wasm
+          path: dist/wasm/siglus_rs-wasm.zip
+          if-no-files-found: error
+
+  vita_image:
+    name: vita build image
+    uses: ./.github/workflows/vita-image.yml
+    permissions:
+      contents: read
+      packages: write
+
+  vita:
+    name: psvita (vpk)
+    needs: vita_image
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: read
+    # VitaSDK, libvita2d, the pinned nightly and cargo-vita
+    # (platform/vita/docker/Dockerfile).
+    container:
+      image: ${{ needs.vita_image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    env:
+      # The workflow's desktop RUSTFLAGS would replace the ones cargo-vita
+      # sets for the Vita target.
+      RUSTFLAGS: ""
+    # Steps in a container run under `sh` unless told otherwise.
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: platform/vita/player
+
+      - name: Build VPK
+        run: |
+          set -euo pipefail
+          cd platform/vita/player
+          cargo vita build vpk -- --release
+          mkdir -p ../../../dist/vita
+          cp target/armv7-sony-vita-newlibeabihf/release/siglus_vita_player.vpk \
+            ../../../dist/vita/siglus-psvita.vpk
+
+      - name: Upload VPK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: siglus-psvita
+          path: dist/vita/siglus-psvita.vpk
+          if-no-files-found: error
+
+  switch_image:
+    name: switch build image
+    uses: ./.github/workflows/switch-image.yml
+    permissions:
+      contents: read
+      packages: write
+
+  switch:
+    name: switch (nro)
+    needs: switch_image
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: read
+    # devkitA64, libnx, deko3d, uam and the pinned nightly
+    # (platform/switch/docker/Dockerfile).
+    container:
+      image: ${{ needs.switch_image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    env:
+      # The Makefile sets the Switch target's RUSTFLAGS itself.
+      RUSTFLAGS: ""
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build NRO
+        run: |
+          set -euo pipefail
+          make -C platform/switch/runtime
+          mkdir -p dist/switch
+          cp platform/switch/runtime/siglus_switch.nro dist/switch/siglus-switch.nro
+
+      - name: Upload NRO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: siglus-switch
+          path: dist/switch/siglus-switch.nro
+          if-no-files-found: error
+
+  macos:
+    name: macos (arm64 + x86_64 + universal dmg)
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install build tools
+        run: |
+          brew install xcodegen
+
+      - name: Build macOS arm64 .app
+        run: |
+          chmod +x platform/scripts/package_macos_app.sh
+          RUST_TARGET=aarch64-apple-darwin OUT_APP_NAME=Siglus-arm64.app ./platform/scripts/package_macos_app.sh
+
+      - name: Build macOS x86_64 .app
+        run: |
+          chmod +x platform/scripts/package_macos_app.sh
+          RUST_TARGET=x86_64-apple-darwin OUT_APP_NAME=Siglus-x86_64.app ./platform/scripts/package_macos_app.sh
+
+      - name: Validate per-arch macOS outputs
+        run: |
+          ARM64_BIN="dist/macos/Siglus-arm64.app/Contents/MacOS/Siglus"
+          ARM64_DYLIB="dist/macos/Siglus-arm64.app/Contents/Frameworks/libsiglus.dylib"
+          X86_64_BIN="dist/macos/Siglus-x86_64.app/Contents/MacOS/Siglus"
+          X86_64_DYLIB="dist/macos/Siglus-x86_64.app/Contents/Frameworks/libsiglus.dylib"
+
+          test -f "${ARM64_BIN}"
+          test -f "${ARM64_DYLIB}"
+          test -f "${X86_64_BIN}"
+          test -f "${X86_64_DYLIB}"
+
+          lipo "${ARM64_BIN}" -verify_arch arm64
+          lipo "${ARM64_DYLIB}" -verify_arch arm64
+          lipo "${X86_64_BIN}" -verify_arch x86_64
+          lipo "${X86_64_DYLIB}" -verify_arch x86_64
+
+      - name: Build universal macOS .app
+        run: |
+          chmod +x platform/scripts/package_macos_universal_app.sh
+          ./platform/scripts/package_macos_universal_app.sh
+
+      - name: Build universal macOS .dmg
+        run: |
+          chmod +x platform/scripts/package_macos_dmg.sh
+          DMG_NAME=Siglus-universal ./platform/scripts/package_macos_dmg.sh
+
+      - name: Validate universal macOS outputs
+        run: |
+          UNIVERSAL_BIN="dist/macos/Siglus.app/Contents/MacOS/Siglus"
+          UNIVERSAL_DYLIB="dist/macos/Siglus.app/Contents/Frameworks/libsiglus.dylib"
+
+          test -f "${UNIVERSAL_BIN}"
+          test -f "${UNIVERSAL_DYLIB}"
+          test -f dist/macos/Siglus-universal.dmg
+
+          lipo "${UNIVERSAL_BIN}" -verify_arch arm64 x86_64
+          lipo "${UNIVERSAL_DYLIB}" -verify_arch arm64 x86_64
+
+      - name: Package per-arch macOS artifacts
+        run: |
+          tar -C dist/macos -czf dist/macos/siglus-macos-arm64.app.tar.gz Siglus-arm64.app
+          tar -C dist/macos -czf dist/macos/siglus-macos-x86_64.app.tar.gz Siglus-x86_64.app
+
+      - name: Upload arm64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: siglus-macos-arm64
+          path: dist/macos/siglus-macos-arm64.app.tar.gz
+          if-no-files-found: error
+
+      - name: Upload x86_64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: siglus-macos-x86_64
+          path: dist/macos/siglus-macos-x86_64.app.tar.gz
+          if-no-files-found: error
+
+      - name: Upload universal DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: siglus-macos-universal
+          path: dist/macos/Siglus-universal.dmg
+          if-no-files-found: error
+
+  ios:
+    name: ios (ipa only)
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add iOS Rust targets
+        run: |
+          rustup target add aarch64-apple-ios
+          rustup target add aarch64-apple-ios-sim
+          rustup target add x86_64-apple-ios
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install build tools
+        run: |
+          brew install xcodegen
+
+      - name: Build iOS artifacts
+        run: |
+          set -euo pipefail
+          export COPYFILE_DISABLE=1
+
+          chmod +x platform/scripts/build_ios_xcframework.sh
+          ./platform/scripts/build_ios_xcframework.sh
+
+          if [[ -f platform/scripts/package_ios_altstore_ipa.sh ]]; then
+            chmod +x platform/scripts/package_ios_altstore_ipa.sh
+            ./platform/scripts/package_ios_altstore_ipa.sh
+          else
+            echo "ERROR: Missing platform/scripts/package_ios_altstore_ipa.sh" >&2
+            exit 1
+          fi
+
+      - name: Collect IPA only
+        run: |
+          set -euo pipefail
+          mkdir -p dist/ios_ci
+
+          IPA_PATH="$(
+            {
+              find dist -maxdepth 5 -type f -name 'SiglusLauncher.ipa'
+              find dist -maxdepth 5 -type f -name 'Siglus.ipa'
+              find platform/ios -type f -name '*.ipa'
+            } | awk '!seen[$0]++' | head -n 1
+          )"
+
+          test -n "$IPA_PATH"
+          cp -v "$IPA_PATH" dist/ios_ci/SiglusLauncher.ipa
+          test -f dist/ios_ci/SiglusLauncher.ipa
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: siglus-ios
+          path: dist/ios_ci/SiglusLauncher.ipa
+          if-no-files-found: error
+
+  windows:
+    name: windows (x64 + arm64)
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Add targets
+        shell: cmd
+        run: |
+          rustup target add x86_64-pc-windows-msvc
+          rustup target add aarch64-pc-windows-msvc
+
+      - name: Build x64
+        shell: cmd
+        run: |
+          if exist platform\scripts\build_windows_msvc.cmd (
+            call platform\scripts\build_windows_msvc.cmd x86_64
+          ) else (
+            cargo build --release -p %SIGLUS_CARGO_PKG% --bin %SIGLUS_BIN% --target x86_64-pc-windows-msvc --verbose
+          )
+
+      - name: Verify x64 output
+        shell: cmd
+        run: |
+          if not exist target\x86_64-pc-windows-msvc\release\%SIGLUS_BIN%.exe exit /b 1
+
+      - name: Build arm64
+        shell: cmd
+        run: |
+          if exist platform\scripts\build_windows_msvc.cmd (
+            call platform\scripts\build_windows_msvc.cmd arm64
+          ) else (
+            cargo build --release -p %SIGLUS_CARGO_PKG% --bin %SIGLUS_BIN% --target aarch64-pc-windows-msvc --verbose
+          )
+
+      - name: Verify arm64 output
+        shell: cmd
+        run: |
+          if not exist target\aarch64-pc-windows-msvc\release\%SIGLUS_BIN%.exe exit /b 1
+
+      - name: Collect Windows outputs
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/windows | Out-Null
+          Copy-Item "target\x86_64-pc-windows-msvc\release\${env:SIGLUS_BIN}.exe" "dist/windows/siglus.exe"
+          Copy-Item "target\aarch64-pc-windows-msvc\release\${env:SIGLUS_BIN}.exe" "dist/windows/siglus_arm64.exe"
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: siglus-windows
+          path: |
+            dist/windows/siglus.exe
+            dist/windows/siglus_arm64.exe
+          if-no-files-found: error
+
+  android:
+    name: android
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add Android Rust targets
+        run: |
+          rustup target add aarch64-linux-android
+          rustup target add x86_64-linux-android
+          rustup target add armv7-linux-androideabi
+          rustup target add i686-linux-android
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+
+      - name: Install Android components
+        run: |
+          set -euo pipefail
+          sdkmanager --version
+
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=${ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
+
+          sdkmanager --licenses < /dev/null || true
+
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-28" \
+            "build-tools;34.0.0" \
+            "ndk;26.3.11579264"
+
+          echo "Installed NDKs:"
+          ls -la "${ANDROID_SDK_ROOT}/ndk" || true
+
+      - name: Build Android APK
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+          ANDROID_NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/26.3.11579264
+          VARIANT: release
+          ABIS: "arm64-v8a x86_64"
+          ANDROID_PLATFORM: "28"
+        run: |
+          set -euo pipefail
+
+          if [[ -f platform/scripts/package_android_apk.sh ]]; then
+            chmod +x platform/scripts/package_android_apk.sh
+            ./platform/scripts/package_android_apk.sh
+          elif [[ -f scripts/android/build_android_apk.sh ]]; then
+            chmod +x scripts/android/build_android_apk.sh
+            ./scripts/android/build_android_apk.sh
+          else
+            echo "ERROR: No Android packaging script found. Expected platform/scripts/package_android_apk.sh or scripts/android/build_android_apk.sh" >&2
+            exit 1
+          fi
+
+      - name: Collect APK only
+        run: |
+          set -euo pipefail
+          mkdir -p dist/android_ci
+
+          APK_PATH="$(
+            {
+              find platform/android -type f -name 'app-release.apk'
+              find platform/android -type f -path '*/build/outputs/apk/release/*.apk'
+              find platform/android -type f -name '*.apk'
+            } | awk '!seen[$0]++' | head -n 1
+          )"
+
+          test -n "$APK_PATH"
+          cp -v "$APK_PATH" dist/android_ci/app-release.apk
+          test -f dist/android_ci/app-release.apk
+
+      - name: Sign Android APK
+        shell: bash
+        env:
+          ANDROID_KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${ANDROID_KEY_BASE64:-}" ]]; then
+            echo "No Android signing secret configured; uploading unsigned release APK."
+            exit 0
+          fi
+
+          test -n "${ANDROID_KEY_ALIAS}"
+          test -n "${ANDROID_KEY_PASSWORD}"
+          test -n "${ANDROID_KEYSTORE_PASSWORD}"
+
+          KEYSTORE="$RUNNER_TEMP/upload-keystore.jks"
+          UNSIGNED_APK="dist/android_ci/app-release.apk"
+          ALIGNED_APK="$RUNNER_TEMP/app-release-aligned.apk"
+          SIGNED_APK="$RUNNER_TEMP/app-release-signed.apk"
+
+          printf '%s' "${ANDROID_KEY_BASE64}" | base64 -d > "${KEYSTORE}"
+
+          "${ANDROID_HOME}/build-tools/34.0.0/zipalign" -f -p 4 \
+            "${UNSIGNED_APK}" \
+            "${ALIGNED_APK}"
+
+          "${ANDROID_HOME}/build-tools/34.0.0/apksigner" sign \
+            --ks "${KEYSTORE}" \
+            --ks-key-alias "${ANDROID_KEY_ALIAS}" \
+            --ks-pass "pass:${ANDROID_KEYSTORE_PASSWORD}" \
+            --key-pass "pass:${ANDROID_KEY_PASSWORD}" \
+            --out "${SIGNED_APK}" \
+            "${ALIGNED_APK}"
+
+          "${ANDROID_HOME}/build-tools/34.0.0/apksigner" verify \
+            --verbose \
+            --print-certs \
+            "${SIGNED_APK}"
+
+          mv -f "${SIGNED_APK}" "${UNSIGNED_APK}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: siglus-android
+          path: dist/android_ci/app-release.apk
+          if-no-files-found: error
+
+  prerelease:
+    name: Publish GitHub Pre-release (non-tag pushes only)
+    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
+    needs: [meta, linux_x86_64, linux_aarch64, freebsd, wasm, vita, switch, macos, ios, windows, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: siglus-prerelease
+      cancel-in-progress: true
+
+    steps:
+      - name: Download all workflow artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: _artifacts
+
+      - name: Compute short SHA
+        id: vars
+        run: |
+          echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Recreate pre-release from scratch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if gh release view pre-release >/dev/null 2>&1; then
+            gh release delete pre-release --cleanup-tag -y
+          fi
+
+          NOTES="$(cat <<EOF
+          Rolling pre-release from non-tag push
+
+          Version: v${{ needs.meta.outputs.version }}
+          Commit: ${{ github.sha }}
+          Short SHA: ${{ steps.vars.outputs.short_sha }}
+          EOF
+          )"
+
+          gh release create pre-release \
+            --prerelease \
+            --target "${{ github.sha }}" \
+            --title "siglus v${{ needs.meta.outputs.version }} pre-release (${{ steps.vars.outputs.short_sha }})" \
+            --notes "$NOTES"
+
+          gh release upload pre-release \
+            _artifacts/siglus-linux-x86_64/siglus-linux-x86_64.tar.gz \
+            _artifacts/siglus-linux-aarch64/siglus-linux-aarch64.tar.gz \
+            _artifacts/siglus-freebsd-x86_64/siglus-freebsd-x86_64.tar.gz \
+            _artifacts/siglus-wasm/siglus_rs-wasm.zip \
+            _artifacts/siglus-psvita/siglus-psvita.vpk \
+            _artifacts/siglus-switch/siglus-switch.nro \
+            _artifacts/siglus-macos-arm64/siglus-macos-arm64.app.tar.gz \
+            _artifacts/siglus-macos-x86_64/siglus-macos-x86_64.app.tar.gz \
+            _artifacts/siglus-macos-universal/Siglus-universal.dmg \
+            _artifacts/siglus-ios/SiglusLauncher.ipa \
+            _artifacts/siglus-windows/siglus.exe \
+            _artifacts/siglus-windows/siglus_arm64.exe \
+            _artifacts/siglus-android/app-release.apk
+
+  release:
+    name: Publish GitHub Release (tags only)
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [meta, linux_x86_64, linux_aarch64, freebsd, wasm, vita, switch, macos, ios, windows, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all workflow artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: _artifacts
+
+      - name: List artifacts
+        run: |
+          find _artifacts -maxdepth 6 -type f -print
+
+      - name: Create Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "siglus v${{ needs.meta.outputs.version }}"
+          files: |
+            _artifacts/**/*
+          fail_on_unmatched_files: true

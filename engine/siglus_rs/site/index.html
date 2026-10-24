@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>siglus_rs documentation</title>
+  <meta name="description" content="API documentation for siglus_rs." />
+  <style>
+    :root {
+      color-scheme: dark;
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.55);
+      --faint: rgba(255,255,255,.36);
+      --line: rgba(255,255,255,.16);
+      --glass: rgba(255,255,255,.105);
+      --shadow: rgba(0,0,0,.34);
+      --blue: #b9d8ff;
+      --mint: #caffea;
+      --red: #ff5f57;
+      --yellow: #ffbd2e;
+      --green: #28c840;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: #080b10;
+      color: var(--text);
+      font-family:
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "SF Pro Display",
+        "Segoe UI",
+        sans-serif;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 24% 18%, rgba(120,170,255,.30), transparent 34rem),
+        radial-gradient(circle at 80% 22%, rgba(210,185,255,.22), transparent 34rem),
+        radial-gradient(circle at 56% 84%, rgba(150,255,220,.14), transparent 34rem),
+        linear-gradient(145deg, #080b10 0%, #131b2a 52%, #081018 100%);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,.032) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.024) 1px, transparent 1px);
+      background-size: 76px 76px;
+      mask-image: radial-gradient(circle at 50% 25%, black, transparent 72%);
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
+      opacity: .055;
+      mix-blend-mode: screen;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: min(980px, calc(100% - 40px));
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 48px 0;
+      display: grid;
+      place-items: center;
+    }
+
+    .window {
+      width: 100%;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.26);
+      border-radius: 42px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,.065)),
+        var(--glass);
+      backdrop-filter: blur(42px) saturate(180%);
+      -webkit-backdrop-filter: blur(42px) saturate(180%);
+      box-shadow:
+        0 34px 120px var(--shadow),
+        inset 0 1px 0 rgba(255,255,255,.32),
+        inset 0 -1px 0 rgba(255,255,255,.08);
+    }
+
+    .titlebar {
+      display: grid;
+      grid-template-columns: 96px 1fr 96px;
+      align-items: center;
+      padding: 15px 22px;
+      border-bottom: 1px solid rgba(0,0,0,.10);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.88), rgba(238,242,248,.72));
+      backdrop-filter: blur(34px) saturate(180%);
+      -webkit-backdrop-filter: blur(34px) saturate(180%);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.95),
+        inset 0 -1px 0 rgba(255,255,255,.42);
+    }
+
+    .traffic {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .traffic span {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      box-shadow:
+        inset 0 0 0 1px rgba(0,0,0,.16),
+        0 1px 2px rgba(0,0,0,.16);
+    }
+
+    .traffic .close {
+      background: var(--red);
+    }
+
+    .traffic .minimize {
+      background: var(--yellow);
+    }
+
+    .traffic .zoom {
+      background: var(--green);
+    }
+
+    .title {
+      justify-self: center;
+      color: rgba(0,0,0,.46);
+      font-size: 13px;
+      font-weight: 560;
+      letter-spacing: -.01em;
+    }
+
+    .hero {
+      padding: clamp(44px, 7vw, 86px);
+      text-align: left;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 100%;
+      font-size: clamp(56px, 9vw, 104px);
+      line-height: .92;
+      letter-spacing: -0.025em;
+      font-weight: 780;
+      white-space: nowrap;
+      overflow: visible;
+    }
+
+    .subtitle {
+      margin: 24px 0 0;
+      max-width: 560px;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 20px);
+      line-height: 1.55;
+      letter-spacing: -.02em;
+    }
+
+    .actions {
+      margin-top: 36px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .button {
+      min-height: 48px;
+      padding: 0 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.20);
+      font-size: 15px;
+      font-weight: 650;
+      letter-spacing: -.01em;
+      transition: transform 150ms ease, background 150ms ease, border-color 150ms ease;
+    }
+
+    .button.primary {
+      color: #07101a;
+      background: linear-gradient(135deg, rgba(255,255,255,.98), rgba(220,235,255,.92));
+      box-shadow: 0 18px 50px rgba(112,169,255,.26);
+    }
+
+    .button.secondary {
+      background: rgba(255,255,255,.08);
+      color: rgba(255,255,255,.82);
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255,255,255,.34);
+    }
+
+    .section-label {
+      margin-top: 46px;
+      color: var(--faint);
+      font-size: 13px;
+      letter-spacing: .02em;
+    }
+
+    .docs {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+
+    .doc {
+      min-width: 0;
+      min-height: 58px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      border-radius: 19px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.075);
+      backdrop-filter: blur(22px) saturate(160%);
+      -webkit-backdrop-filter: blur(22px) saturate(160%);
+      transition: transform 150ms ease, background 150ms ease, border-color 150ms ease;
+    }
+
+    .doc strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 15px;
+      font-weight: 650;
+    }
+
+    .doc span {
+      flex: 0 0 auto;
+      color: var(--faint);
+      font-size: 13px;
+    }
+
+    .doc:hover {
+      transform: translateY(-2px);
+      background: rgba(255,255,255,.13);
+      border-color: rgba(255,255,255,.24);
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        width: min(100% - 24px, 980px);
+        padding: 24px 0;
+      }
+
+      .window {
+        border-radius: 32px;
+      }
+
+      .titlebar {
+        grid-template-columns: auto 1fr;
+        padding: 15px 18px;
+      }
+
+      .title {
+        justify-self: end;
+        font-size: 13px;
+        color: rgba(0,0,0,.46);
+      }
+
+      .hero {
+        padding: 36px 26px 42px;
+      }
+
+      h1 {
+        font-size: clamp(46px, 14vw, 72px);
+        line-height: .94;
+        letter-spacing: -0.018em;
+        white-space: nowrap;
+      }
+    }
+
+    @media (max-width: 420px) {
+      h1 {
+        font-size: clamp(40px, 13vw, 58px);
+        letter-spacing: -0.012em;
+      }
+
+      .actions {
+        flex-direction: column;
+      }
+
+      .button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="window">
+      <header class="titlebar">
+        <div class="traffic" aria-hidden="true">
+          <span class="close"></span>
+          <span class="minimize"></span>
+          <span class="zoom"></span>
+        </div>
+        <div class="title">siglus_rs</div>
+        <div></div>
+      </header>
+
+      <div class="hero">
+        <h1>siglus_rs</h1>
+        <p class="subtitle">API documentation for the SiglusEngine runtime implementation.</p>
+
+        <div class="actions">
+          <a class="button primary" href="./siglus_scene_vm/">Open API docs</a>
+          <a class="button secondary" href="https://github.com/xmoezzz/siglus_rs">GitHub</a>
+        </div>
+
+        <div class="section-label">API crates</div>
+        <nav class="docs" aria-label="Documentation links">
+          <a class="doc" href="./siglus_scene_vm/">
+            <strong>siglus_scene_vm</strong>
+            <span>runtime</span>
+          </a>
+          <a class="doc" href="./siglus_assets/">
+            <strong>siglus_assets</strong>
+            <span>assets</span>
+          </a>
+          <a class="doc" href="./siglus_cfx_decompiler/">
+            <strong>siglus_cfx_decompiler</strong>
+            <span>tooling</span>
+          </a>
+        </nav>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

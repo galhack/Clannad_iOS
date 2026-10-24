@@ -1,0 +1,78 @@
+[workspace]
+resolver = "3"
+members = [
+  "crates/*",
+]
+exclude = ["vendor/eluna_rs"]
+
+[workspace.package]
+edition = "2024"
+license = "MPL-2.0"
+
+[profile.release]
+# Reduce distribution size while retaining optimization for runtime performance.
+strip = true
+lto = "thin"
+codegen-units = 1
+opt-level = 3
+
+[workspace.lints.rust]
+unused = "allow"
+non_upper_case_globals = "allow"
+
+[workspace.lints.clippy]
+erasing_op = "allow"
+too_many_arguments = "allow"
+needless_range_loop = "allow"
+identity_op = "allow"
+explicit_counter_loop = "allow"
+precedence = "allow"
+misrefactored_assign_op = "allow"
+
+[workspace.dependencies]
+anyhow = { version = "1", default-features = false }
+clap = { version = "4", features = ["derive"] }
+bytemuck = { version = "1", features = ["derive"] }
+wgpu = { version = "0.20", features = ["wgsl"] }
+winit = "=0.31.0-beta.3"
+pollster = "0.3"
+image = { version = "0.24", default-features = false, features = ["png", "jpeg", "bmp", "dds"] }
+log = "0.4"
+env_logger = "0.11"
+kira = "0.9"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+
+# ---------------------------------------------------------------------------
+# Apple visionOS port patches (CLANNAD Apple port; see docs/ENGINE-PATCHES.md)
+#
+# libloading 0.7.4 (pulled in by ash, which wgpu-hal enables for every non-wasm,
+# non-macOS/iOS `unix` target — visionOS included) does not know visionOS in
+# its RTLD_* table.  visionOS is Darwin, so the macOS/iOS values apply.
+# ---------------------------------------------------------------------------
+[patch.crates-io]
+libloading = { path = "vendor/libloading-0.7.4" }
+# wgpu 0.20 only registers its Metal backend for macOS/iOS (`metal` cfg alias and
+# a few literal cfgs), so a visionOS build gets an instance with no backends and
+# `create_surface` fails with "Failed to create surface for any enabled backend".
+# These three vendored copies are stock 0.20.1/0.21.1 with `target_os =
+# "visionos"` added next to the Apple cfgs (build.rs aliases, wgpu-core backend
+# registration, wgpu-hal metal surface/instance, objc dependency).
+wgpu = { path = "vendor/wgpu-0.20.1" }
+wgpu-core = { path = "vendor/wgpu-core-0.21.1" }
+wgpu-hal = { path = "vendor/wgpu-hal-0.21.1" }
+# metal-rs 0.28 links `dispatch` as a separate dylib on non-macOS/iOS Apple
+# targets; on visionOS dispatch lives in libSystem, like on iOS. It also
+# excludes MTLCopyAllDevices on iOS, which visionOS shares.
+metal = { path = "vendor/metal-0.28.0" }
+# block 0.1.6 links BlocksRuntime as a separate dylib off macOS/iOS; on visionOS
+# it lives in libSystem like on iOS.
+block = { path = "vendor/block-0.1.6" }
+# objc 0.2.7 selects the GNUstep message path for any non-macOS/iOS target;
+# visionOS is Apple/Darwin and needs the Apple objc_msgSend path.
+objc = { path = "vendor/objc-0.2.7" }
+# cpal 0.15 only enables its CoreAudio host for macOS/iOS, so kira found no
+# audio device on visionOS ("Cannot find the default audio output device").
+# visionOS has the same CoreAudio/AudioUnit API surface.
+cpal = { path = "vendor/cpal-0.15.3" }
+coreaudio-rs = { path = "vendor/coreaudio-rs-0.11.3" }
+coreaudio-sys = { path = "vendor/coreaudio-sys-0.2.17" }
