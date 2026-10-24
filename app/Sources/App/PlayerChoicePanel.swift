@@ -16,6 +16,15 @@ final class PlayerChoicePanel: UIControl {
         accessibilityIdentifier = "player.choices"
         backgroundColor = UIColor.black.withAlphaComponent(0.55)
 
+        #if os(iOS) && !targetEnvironment(macCatalyst)
+        let cardWidth: CGFloat = 420
+        let padding: CGFloat = 14
+        let spacing: CGFloat = 8
+        #else
+        let cardWidth: CGFloat = 640
+        let padding: CGFloat = 20
+        let spacing: CGFloat = 12
+        #endif
         let scroll = UIScrollView()
         scroll.translatesAutoresizingMaskIntoConstraints = false
         scroll.backgroundColor = .secondarySystemBackground
@@ -24,7 +33,7 @@ final class PlayerChoicePanel: UIControl {
         addSubview(scroll)
         let stack = UIStackView()
         stack.axis = .vertical
-        stack.spacing = 12
+        stack.spacing = spacing
         stack.translatesAutoresizingMaskIntoConstraints = false
         scroll.addSubview(stack)
 
@@ -52,19 +61,19 @@ final class PlayerChoicePanel: UIControl {
         NSLayoutConstraint.activate([
             scroll.centerXAnchor.constraint(equalTo: centerXAnchor),
             scroll.centerYAnchor.constraint(equalTo: centerYAnchor),
-            scroll.widthAnchor.constraint(lessThanOrEqualToConstant: 640),
+            scroll.widthAnchor.constraint(lessThanOrEqualToConstant: cardWidth),
             scroll.widthAnchor.constraint(lessThanOrEqualTo: safeAreaLayoutGuide.widthAnchor, constant: -40),
             scroll.heightAnchor.constraint(lessThanOrEqualTo: safeAreaLayoutGuide.heightAnchor, multiplier: 0.65),
-            stack.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor, constant: 20),
-            stack.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor, constant: -20),
-            stack.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor, constant: 20),
-            stack.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor, constant: -20),
-            stack.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor, constant: -40),
+            stack.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor, constant: padding),
+            stack.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor, constant: -padding),
+            stack.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor, constant: padding),
+            stack.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor, constant: -padding),
+            stack.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor, constant: -padding * 2),
         ])
-        let width = scroll.widthAnchor.constraint(equalToConstant: 640)
+        let width = scroll.widthAnchor.constraint(equalToConstant: cardWidth)
         width.priority = .defaultHigh
         width.isActive = true
-        let contentHeight = scroll.heightAnchor.constraint(equalTo: stack.heightAnchor, constant: 40)
+        let contentHeight = scroll.heightAnchor.constraint(equalTo: stack.heightAnchor, constant: padding * 2)
         contentHeight.priority = .defaultHigh
         contentHeight.isActive = true
     }
@@ -77,12 +86,19 @@ final class PlayerChoicePanel: UIControl {
         configuration.title = text
         configuration.titleAlignment = .center
         configuration.titleLineBreakMode = .byWordWrapping
-        configuration.contentInsets = NSDirectionalEdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)
+        #if os(iOS) && !targetEnvironment(macCatalyst)
+        let verticalInset: CGFloat = 10
+        let minimumHeight: CGFloat = 44
+        #else
+        let verticalInset: CGFloat = 14
+        let minimumHeight: CGFloat = 52
+        #endif
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: verticalInset, leading: 16, bottom: verticalInset, trailing: 16)
         button.configuration = configuration
         button.titleLabel?.numberOfLines = 0
         button.setContentCompressionResistancePriority(.required, for: .vertical)
         button.accessibilityIdentifier = id
-        button.heightAnchor.constraint(greaterThanOrEqualToConstant: 52).isActive = true
+        button.heightAnchor.constraint(greaterThanOrEqualToConstant: minimumHeight).isActive = true
         button.addAction(UIAction { [weak self] _ in self?.onSelect?(index) }, for: .touchUpInside)
         if let previous = stack.arrangedSubviews.last as? UIButton {
             stack.setCustomSpacing(32, after: previous)

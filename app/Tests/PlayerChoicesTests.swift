@@ -63,6 +63,29 @@ final class PlayerChoicesTests: XCTestCase {
         XCTAssertLessThan(card.bounds.height, panel.bounds.height * 0.5)
     }
 
+    #if os(iOS) && !targetEnvironment(macCatalyst)
+    func testPhoneLandscapeChoicesLeaveMoreStoryVisible() throws {
+        let panel = PlayerChoicePanel(choices: ["录点东西进去覆盖掉", "还是算了"], canCancel: false)
+        panel.frame = CGRect(x: 0, y: 0, width: 956, height: 440)
+        panel.layoutIfNeeded()
+        let card = try XCTUnwrap(panel.subviews.first as? UIScrollView)
+        XCTAssertLessThanOrEqual(card.bounds.width, 420)
+        XCTAssertLessThanOrEqual(card.bounds.height, 220)
+        for index in 0..<2 {
+            let button = try XCTUnwrap(findButton(panel, id: "player.choice.\(index)"))
+            XCTAssertGreaterThanOrEqual(button.bounds.height, 44)
+        }
+    }
+
+    func testPadChoicesKeepTheCompactWidth() throws {
+        let panel = PlayerChoicePanel(choices: ["前往中庭", "还是算了"], canCancel: false)
+        panel.frame = CGRect(x: 0, y: 0, width: 1366, height: 1024)
+        panel.layoutIfNeeded()
+        let card = try XCTUnwrap(panel.subviews.first as? UIScrollView)
+        XCTAssertLessThanOrEqual(card.bounds.width, 420)
+    }
+    #endif
+
     func testLongChoiceListScrollsWithinTheScreen() throws {
         let panel = PlayerChoicePanel(choices: (0..<20).map { "Route \($0)" }, canCancel: false)
         panel.frame = CGRect(x: 0, y: 0, width: 844, height: 390)
