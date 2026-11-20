@@ -68,6 +68,15 @@ final class PlayerControlsTests: XCTestCase {
         XCTAssertTrue(menu.cancelsTouchesInView)
     }
 
+    func testTwoFingerPanAlsoReceivesMouseAndTrackpadScrollEvents() throws {
+        let player = SiglusPlayerViewController(gameRoot: URL(fileURLWithPath: "/unused"),
+                                               title: "Test", onExit: {})
+        player.loadViewIfNeeded()
+        let scroll = try XCTUnwrap(player.view.gestureRecognizers?.compactMap { $0 as? UIPanGestureRecognizer }
+            .first { $0.minimumNumberOfTouches == 2 })
+        XCTAssertEqual(scroll.allowedScrollTypesMask, [.continuous, .discrete])
+    }
+
     func testFastForwardButtonReportsOnAndOff() throws {
         let bar = PlayerControlBar()
         let skip = try XCTUnwrap(button(in: bar, identifier: "player.skip"))

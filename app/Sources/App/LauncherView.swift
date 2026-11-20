@@ -27,7 +27,9 @@ struct LauncherView: View {
                     if library.gameFolder != nil {
                         startSection
                     }
+                    #if !targetEnvironment(macCatalyst)
                     playerControlsCard
+                    #endif
                     importCard
                     transferCard
                     if let error = library.errorMessage {
@@ -326,7 +328,7 @@ struct LauncherView: View {
     private var footer: some View {
         VStack(alignment: .leading, spacing: 4) {
             #if targetEnvironment(macCatalyst)
-            Text("操作：鼠标与键盘同 PC 版 · 左键 = 确定 · 右键 = 菜单 · 滚轮 = 回想 · 按住 Control = 快进")
+            Text("操作：左键 = 确定 · 右键 = 菜单 · 向上滚动 = 历史对白 · 向下滚动 = 下一条对白 · 按住 Control = 快进。菜单栏“游戏”也可打开游戏菜单和切换快进。")
             #else
             Text("操作：轻点 = 确定 · 双指轻点 = 右键（菜单）· 单指拖动 = 移动 · 双指上下滑 = 滚轮（回想）· 长按 = 快进（Ctrl）")
             Text("也支持硬件键盘与手柄：A = 确定 · B = 菜单 · RT = 快进 · 十字键上下 = 滚轮。")
