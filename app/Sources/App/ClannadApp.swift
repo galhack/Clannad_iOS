@@ -58,7 +58,26 @@ final class OrientationController {
     }
 }
 
-final class AppDelegate: NSObject, UIApplicationDelegate {
+final class AppDelegate: UIResponder, UIApplicationDelegate {
+    override func buildMenu(with builder: UIMenuBuilder) {
+        super.buildMenu(with: builder)
+        #if targetEnvironment(macCatalyst)
+        guard builder.system == .main else { return }
+        builder.insertSibling(Self.playerMenu(), afterMenu: .view)
+        #endif
+    }
+
+    static func playerMenu() -> UIMenu {
+        let menu = UIKeyCommand(title: "游戏菜单…",
+                                action: #selector(SiglusPlayerViewController.showGameMenuCommand(_:)),
+                                input: "m", modifierFlags: [.command, .shift])
+        let skip = UIKeyCommand(title: "快进",
+                                action: #selector(SiglusPlayerViewController.toggleGameSkipCommand(_:)),
+                                input: "f", modifierFlags: [.command, .shift])
+        return UIMenu(title: "游戏", identifier: UIMenu.Identifier("org.local.clannad.game"),
+                      children: [menu, skip])
+    }
+
     func application(_ application: UIApplication,
                      supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
         OrientationController.shared.mask

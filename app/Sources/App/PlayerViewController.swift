@@ -117,6 +117,7 @@ final class SiglusPlayerViewController: UIViewController, UIGestureRecognizerDel
     private var lastSkipPoll: CFTimeInterval = 0
     private var storySelection: PlayerStorySelection?
     private var choicePanel: PlayerChoicePanel?
+    private var systemInterfaceActive = false
 
     /// Touch-friendly control bar (game menu and fast-forward), shown while
     /// the player view is on screen only.
@@ -138,8 +139,7 @@ final class SiglusPlayerViewController: UIViewController, UIGestureRecognizerDel
     private var loadingOverlay: UIView?
     private var pendingSurface: (wPx: UInt32, hPx: UInt32, scale: Double)?
 
-    // Two-finger scroll accumulation.
-    private var scrollAccumulator: CGFloat = 0
+    private var scrollInput = PlayerScrollInput()
 
     init(gameRoot: URL, title: String, onExit: @escaping () -> Void) {
         self.gameRoot = gameRoot
@@ -191,6 +191,9 @@ final class SiglusPlayerViewController: UIViewController, UIGestureRecognizerDel
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        #if targetEnvironment(macCatalyst)
+        becomeFirstResponder()
+        #endif
         lockToLandscape()
         updateHomeIndicator()
         startDisplayLink()
@@ -345,6 +348,9 @@ final class SiglusPlayerViewController: UIViewController, UIGestureRecognizerDel
             return
         }
         handle = created
+        #if targetEnvironment(macCatalyst)
+        UIMenuSystem.main.setNeedsRevalidate()
+        #endif
         var lw: UInt32 = 1280
         var lh: UInt32 = 720
         siglus_ios_logical_size(created, &lw, &lh)
@@ -621,10 +627,10 @@ final class SiglusPlayerViewController: UIViewController, UIGestureRecognizerDel
                 if let command = DebugScript.consumeCommand() {
                     NSLog("Clannad: debug command %@", command.action)
                     switch command.action {
-                    case "menu": controlBar?.triggerMenuForValidation()
+                    case "menu": openGameMenu()
                     case "two_finger_tap":
                         sendRightClick(at: CGPoint(x: metalView.bounds.midX, y: metalView.bounds.midY))
-                    case "skip": controlBar?.triggerSkipForValidation()
+                    case "skip": toggleFastForwardButton()
                     case "tap":
                         if let x = command.x, let y = command.y,
                            x.isFinite, y.isFinite, (0...1).contains(x), (0...1).contains(y) {
@@ -715,6 +721,7 @@ final class SiglusPlayerViewController: UIViewController, UIGestureRecognizerDel
         let twoFingerPan = UIPanGestureRecognizer(target: self, action: #selector(handleTwoFingerPan(_:)))
         twoFingerPan.minimumNumberOfTouches = 2
         twoFingerPan.maximumNumberOfTouches = 2
+        twoFingerPan.allowedScrollTypesMask = [.continuous, .discrete]
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
         longPress.minimumPressDuration = 0.55
 
@@ -733,7 +740,6 @@ final class SiglusPlayerViewController: UIViewController, UIGestureRecognizerDel
         ]
         tap.allowedTouchTypes = pointerTypes
         pan.allowedTouchTypes = pointerTypes
-        twoFingerPan.allowedScrollTypesMask = [.continuous, .discrete]
         #endif
 
         for recognizer in [tap, twoFingerTap, pan, twoFingerPan, longPress] as [UIGestureRecognizer] {
@@ -887,23 +893,15 @@ final class SiglusPlayerViewController: UIViewController, UIGestureRecognizerDel
         guard handle != nil else { return }
         noteUserActivity()
         switch recognizer.state {
-        case .began:
-            scrollAccumulator = 0
-        case .changed:
+        case .began, .changed:
+            if recognizer.state == .began { scrollInput.reset() }
             let translation = recognizer.translation(in: metalView)
             recognizer.setTranslation(.zero, in: metalView)
-            scrollAccumulator += translation.y
-            let step: CGFloat = 22
-            while scrollAccumulator <= -step {
-                scrollAccumulator += step
-                sendWheel(1)   // swipe up: wheel up (backlog scroll)
-            }
-            while scrollAccumulator >= step {
-                scrollAccumulator -= step
-                sendWheel(-1)  // swipe down: wheel down
+            scrollInput.scroll(by: translation.y, isDirectTouch: recognizer.numberOfTouches > 0) { delta in
+                sendWheel(delta)
             }
         default:
-            scrollAccumulator = 0
+            scrollInput.reset()
         }
     }
 
@@ -926,6 +924,7 @@ final class SiglusPlayerViewController: UIViewController, UIGestureRecognizerDel
     /// Docked top-right during the story; hidden over the game's system UI so
     /// its original close/navigation buttons remain visible and touchable.
     private func installControlBar() {
+        #if !targetEnvironment(macCatalyst)
         guard controlBar == nil else { return }
         let bar = PlayerControlBar()
         bar.setButtonsVisible(PlayerControlPreferences.buttonsVisible())
@@ -946,6 +945,7 @@ final class SiglusPlayerViewController: UIViewController, UIGestureRecognizerDel
         bar.setFastForwardActive(isFastForwarding)
         controlBar = bar
         scheduleControlFade()
+        #endif
     }
 
     @objc private func controlPreferencesChanged() {
@@ -972,12 +972,16 @@ final class SiglusPlayerViewController: UIViewController, UIGestureRecognizerDel
     }
 
     private func pollSystemInterfaceState() {
-        guard let handle, let bar = controlBar else { return }
+        guard let handle else { return }
         let active = siglus_ios_system_interface_active(handle) != 0
-        guard bar.systemInterfaceActive != active else { return }
+        guard systemInterfaceActive != active else { return }
+        systemInterfaceActive = active
         if active { releaseAllFastForward() }
-        bar.setSystemInterfaceActive(active)
-        NSLog("Clannad: system interface %@; controls %@", active ? "open" : "closed", bar.isHidden ? "hidden" : "visible")
+        controlBar?.setSystemInterfaceActive(active)
+        #if targetEnvironment(macCatalyst)
+        UIMenuSystem.main.setNeedsRevalidate()
+        #endif
+        NSLog("Clannad: system interface %@", active ? "open" : "closed")
     }
 
     private func noteUserActivity() {
@@ -1048,7 +1052,7 @@ final class SiglusPlayerViewController: UIViewController, UIGestureRecognizerDel
     // MARK: - fast forward
 
     private func toggleFastForwardButton() {
-        guard choicePanel == nil else { return }
+        guard choicePanel == nil, !systemInterfaceActive else { return }
         if let setSkip = SiglusOptionalFFI.setSkip, let handle {
             // Engine-maintained skip-all: it stops by itself at choices and
             // message boxes.  Keep the button tint in sync with the state the
@@ -1106,6 +1110,9 @@ final class SiglusPlayerViewController: UIViewController, UIGestureRecognizerDel
     private func refreshFastForwardTint() {
         let active = SiglusOptionalFFI.setSkip != nil ? skipActive : isFastForwarding
         controlBar?.setFastForwardActive(active)
+        #if targetEnvironment(macCatalyst)
+        UIMenuSystem.main.setNeedsRevalidate()
+        #endif
     }
 
     private func releaseAllFastForward() {
@@ -1152,6 +1159,39 @@ final class SiglusPlayerViewController: UIViewController, UIGestureRecognizerDel
     }
 
     // MARK: - keyboard input
+
+    #if targetEnvironment(macCatalyst)
+    override var canBecomeFirstResponder: Bool { true }
+    #endif
+
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        let available = handle != nil && !didExit && !engineFailed && presentedViewController == nil
+        switch action {
+        case #selector(showGameMenuCommand(_:)):
+            return available
+        case #selector(toggleGameSkipCommand(_:)):
+            return available && choicePanel == nil && !systemInterfaceActive
+        default:
+            return super.canPerformAction(action, withSender: sender)
+        }
+    }
+
+    override func validate(_ command: UICommand) {
+        super.validate(command)
+        if command.action == #selector(toggleGameSkipCommand(_:)) {
+            command.state = skipActive || isFastForwarding ? .on : .off
+        }
+    }
+
+    @objc func showGameMenuCommand(_ command: UICommand) {
+        guard canPerformAction(command.action, withSender: command) else { return }
+        openGameMenu()
+    }
+
+    @objc func toggleGameSkipCommand(_ command: UICommand) {
+        guard canPerformAction(command.action, withSender: command) else { return }
+        toggleFastForwardButton()
+    }
 
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         var handled = false
